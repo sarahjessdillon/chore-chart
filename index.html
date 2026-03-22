@@ -436,6 +436,7 @@ function reopenSession(key){
   session.completed=false;
   save();renderDeepSession();
 }
+function buildSessionItems(key){
   const session=getSession(key);
   const sessionItems=session.items||[];
   const sessionTexts=new Set(sessionItems.map(i=>i.text));
