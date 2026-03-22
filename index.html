@@ -79,6 +79,7 @@ button.sm:hover{background:#f5f5f3;}
 .session-task-row input[type=checkbox]{accent-color:#1a1a1a;}
 .defer-btn{font-size:11px;padding:2px 8px;border-radius:8px;border:1px solid #ddd;background:none;cursor:pointer;color:#aaa;white-space:nowrap;}
 .defer-btn:hover{background:#f5f5f3;}
+.defer-select{font-size:11px;padding:2px 5px;border:1px solid #ddd;border-radius:6px;background:#fff;color:#888;cursor:pointer;min-width:0;max-width:90px;}
 .deferred-badge{font-size:10px;padding:2px 6px;border-radius:6px;background:#eeedfe;color:#534ab7;white-space:nowrap;}
 .carried-badge{font-size:10px;padding:2px 6px;border-radius:6px;background:#faece7;color:#993c1d;white-space:nowrap;}
 .overdue-badge{font-size:10px;padding:2px 6px;border-radius:6px;background:#fcebeb;color:#a32d2d;white-space:nowrap;}
@@ -405,7 +406,36 @@ function renderWeekly(){
   document.getElementById('progress-text').textContent=`${doneC} of ${totalC} chores done this week`;
 }
 
-function buildSessionItems(key){
+function futureSessionKey(monthsAhead){
+  const n=new Date();
+  const fm=new Date(n.getFullYear(),n.getMonth()+monthsAhead,1);
+  return `${fm.getFullYear()}-${String(fm.getMonth()+1).padStart(2,'0')}`;
+}
+
+function isSessionComplete(key){
+  const session=S.deepSessions[key];
+  if(!session)return false;
+  const allItems=buildSessionItems(key);
+  if(!allItems.length)return false;
+  return allItems.every(item=>{
+    const idx=(session.items||[]).findIndex(i=>i.text===item.text);
+    const isDone=idx>=0&&session.items[idx].done;
+    const isDeferred=(session.deferred||[]).includes(item.text);
+    return isDone||isDeferred;
+  });
+}
+
+function markSessionComplete(key){
+  const session=getSession(key);
+  session.completed=true;
+  save();renderDeepSession();
+}
+
+function reopenSession(key){
+  const session=getSession(key);
+  session.completed=false;
+  save();renderDeepSession();
+}
   const session=getSession(key);
   const sessionItems=session.items||[];
   const sessionTexts=new Set(sessionItems.map(i=>i.text));
@@ -416,21 +446,45 @@ function buildSessionItems(key){
 }
 
 function renderDeepSession(){
-  const key=archiveViewKey||currentSessionKey();
-  const nextKey=nextSessionKey();
-  const session=getSession(key);
   const isArchive=!!archiveViewKey;
+  const currentKey=currentSessionKey();
+  const sessionComplete=!isArchive&&(getSession(currentKey).completed||isSessionComplete(currentKey));
+  // If current session is done and not viewing archive, show next month front and center
+  const key=isArchive?archiveViewKey:(sessionComplete?futureSessionKey(1):currentKey);
+  const nextKey=futureSessionKey(sessionComplete?2:1);
+  const session=getSession(key);
   const el=document.getElementById('deep-session');
   let html='';
+
   if(isArchive)html+=`<div class="back-btn" onclick="archiveViewKey=null;switchDeepTab('archive')">← Back to archive</div>`;
-  html+=`<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem;gap:12px;flex-wrap:wrap;"><div><div class="session-title">${sessionLabel(key)} Cleaning</div>`;
+
+  // If current session is done, show a completion banner with option to reopen
+  if(!isArchive&&sessionComplete){
+    html+=`<div style="background:#e1f5ee;border:1px solid #9fe1cb;border-radius:8px;padding:8px 12px;font-size:12px;color:#085041;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <span>✓ ${sessionLabel(currentKey)} cleaning is done!</span>
+      <button class="defer-btn" onclick="reopenSession('${currentKey}')">Reopen</button>
+    </div>`;
+  }
+
+  // Header
+  html+=`<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem;gap:12px;flex-wrap:wrap;">`;
+  html+=`<div><div class="session-title">${sessionLabel(key)} Cleaning</div>`;
   if(session.date)html+=`<div style="font-size:12px;color:#888;margin-top:2px;">Session date: ${fmtDateStr(session.date)}</div>`;
   html+=`</div>`;
-  if(!isArchive)html+=`<div style="display:flex;align-items:center;gap:8px;"><input type="date" value="${session.date||''}" style="width:150px;" onchange="saveSessionDate(this.value,'${key}')" /><span style="font-size:11px;color:#aaa;">session date</span></div>`;
+  if(!isArchive)html+=`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><input type="date" value="${session.date||''}" style="width:150px;min-width:0;" onchange="saveSessionDate(this.value,'${key}')" /><span style="font-size:11px;color:#aaa;">session date</span></div>`;
   html+=`</div>`;
+
   const allItems=buildSessionItems(key);
-  if(!allItems.length&&!isArchive){html+=`<div class="empty-state">No tasks due this session. Add one below or update last-cleaned dates in the Task list.</div>`;}
-  else{
+  const canComplete=!isArchive&&!sessionComplete&&allItems.length>0&&allItems.every(item=>{
+    const idx=(session.items||[]).findIndex(i=>i.text===item.text);
+    const isDone=idx>=0&&session.items[idx].done;
+    const isDeferred=(session.deferred||[]).includes(item.text);
+    return isDone||isDeferred;
+  });
+
+  if(!allItems.length&&!isArchive){
+    html+=`<div class="empty-state">No tasks due this session. Add one below or update last-cleaned dates in the Task list.</div>`;
+  } else {
     html+=`<div class="card" style="padding:4px 14px;margin-bottom:1rem;">`;
     if(isArchive){
       const doneItems=(session.items||[]).filter(i=>i.done);
@@ -444,16 +498,32 @@ function renderDeepSession(){
         const safeText=item.text.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
         html+=`<div class="session-task-row"><label class="${isDone?'done':''}"><input type="checkbox" ${isDone?'checked':''} onchange="toggleSessionItem('${key}','${safeText}',this.checked)" />${item.text}</label>`;
         if(item.carried)html+=`<span class="carried-badge">from preview</span>`;
-        if(isDeferred)html+=`<span class="deferred-badge">deferred</span><button class="defer-btn" style="margin-left:2px" onclick="undoDefer('${key}','${safeText}')">undo</button>`;
-        else if(!isDone)html+=`<button class="defer-btn" onclick="deferTask('${key}','${safeText}')">Defer →</button>`;
+        if(isDeferred){
+          html+=`<span class="deferred-badge">deferred</span><button class="defer-btn" style="margin-left:2px" onclick="undoDefer('${key}','${safeText}')">undo</button>`;
+        } else if(!isDone){
+          // defer picker — show inline select for 1/2/3 months out
+          const d1=futureSessionKey(1),d2=futureSessionKey(2),d3=futureSessionKey(3);
+          html+=`<select class="defer-select" onchange="if(this.value)deferTaskTo('${key}','${safeText}',this.value);this.value='';" style="font-size:11px;padding:2px 5px;border:1px solid #ddd;border-radius:6px;background:#fff;color:#888;max-width:100px;">
+            <option value="">Defer…</option>
+            <option value="${d1}">${sessionLabel(d1)}</option>
+            <option value="${d2}">${sessionLabel(d2)}</option>
+            <option value="${d3}">${sessionLabel(d3)}</option>
+          </select>`;
+        }
         if(sessionIdx>=0)html+=`<button class="del-btn" onclick="removeSessionItem('${key}','${safeText}')">×</button>`;
         html+=`</div>`;
       });
     }
     html+=`</div>`;
   }
+
   if(!isArchive){
+    if(canComplete){
+      html+=`<button class="sm" style="width:100%;margin-bottom:1rem;padding:9px;font-size:13px;font-weight:500;background:#e1f5ee;border-color:#9fe1cb;color:#085041;" onclick="markSessionComplete('${key}')">✓ Mark ${sessionLabel(key)} cleaning as done</button>`;
+    }
     html+=`<div class="add-row" style="margin-bottom:1.5rem;"><input type="text" id="new-session-item" placeholder="Add a task to this session..." onkeydown="if(event.key==='Enter')addSessionItem('${key}')" /><button class="sm" onclick="addSessionItem('${key}')">Add</button></div>`;
+
+    // Preview block for next month
     const nextSession=getSession(nextKey);
     const nextDue=S.deepTasks.filter(t=>isTaskDue(t,nextKey));
     const previewNotes=nextSession.previewNotes||[];
@@ -463,6 +533,8 @@ function renderDeepSession(){
       nextDue.forEach(t=>{const isCarried=(nextSession.deferred||[]).includes(t.text);html+=`<div class="preview-item">${t.text}${isCarried?`<span class="carried-badge">carried over</span>`:''}</div>`;});
       html+=`</div>`;
     } else html+=`<div style="font-size:12px;color:#aaa;margin-bottom:1rem;">Nothing from the task list due next month yet.</div>`;
+    html+=`<div class="sec-label" style="margin-bottom:6px;">Session date</div>`;
+    html+=`<div style="margin-bottom:1rem;"><input type="date" value="${nextSession.date||''}" style="width:100%;min-width:0;" onchange="saveSessionDate(this.value,'${nextKey}')" /></div>`;
     html+=`<div class="sec-label" style="margin-bottom:6px;">Other things to tackle</div><div class="card" style="padding:4px 14px;margin-bottom:8px;">`;
     if(!previewNotes.length)html+=`<div style="padding:6px 0;font-size:12px;color:#aaa;">Nothing added yet.</div>`;
     previewNotes.forEach((note,ni)=>{html+=`<div class="note-item">${note}<button class="del-btn" style="margin-left:auto" onclick="removePreviewNote('${nextKey}',${ni})">×</button></div>`;});
@@ -481,17 +553,26 @@ function toggleSessionItem(key,text,checked){
 function undoDefer(key,text){
   const session=getSession(key);
   session.deferred=(session.deferred||[]).filter(d=>d!==text);
-  // also remove from next session's deferred
-  const nk=nextSessionKey();
-  const next=getSession(nk);
-  next.deferred=(next.deferred||[]).filter(d=>d!==text);
+  [1,2,3].forEach(m=>{
+    const fk=futureSessionKey(m);
+    const fs=S.deepSessions[fk];
+    if(fs)fs.deferred=(fs.deferred||[]).filter(d=>d!==text);
+  });
   save();renderDeepSession();
 }
-function deferTask(key,text){
-  const session=getSession(key);if(!session.deferred)session.deferred=[];if(!session.deferred.includes(text))session.deferred.push(text);
-  const nk=nextSessionKey();const next=getSession(nk);if(!next.deferred)next.deferred=[];if(!next.deferred.includes(text))next.deferred.push(text);
+function deferTaskTo(key,text,targetKey){
+  // mark as deferred in current session
+  const session=getSession(key);
+  if(!session.deferred)session.deferred=[];
+  if(!session.deferred.includes(text))session.deferred.push(text);
+  // add to target session's deferred list
+  const target=getSession(targetKey);
+  if(!target.deferred)target.deferred=[];
+  if(!target.deferred.includes(text))target.deferred.push(text);
   save();renderDeepSession();
 }
+// keep old deferTask pointing to next month for any legacy calls
+function deferTask(key,text){deferTaskTo(key,text,futureSessionKey(1));}
 function removeSessionItem(key,text){const session=getSession(key);session.items=(session.items||[]).filter(i=>i.text!==text);save();renderDeepSession();}
 function addSessionItem(key){const inp=document.getElementById('new-session-item');const txt=inp.value.trim();if(!txt)return;const session=getSession(key);if(!session.items)session.items=[];if(!session.items.find(i=>i.text===txt))session.items.push({text:txt,done:false});inp.value='';save();renderDeepSession();}
 function addPreviewNote(nextKey){const inp=document.getElementById('new-preview-note');const txt=inp.value.trim();if(!txt)return;const session=getSession(nextKey);if(!session.previewNotes)session.previewNotes=[];if(!session.previewNotes.includes(txt))session.previewNotes.push(txt);if(!session.carriedNotes)session.carriedNotes=[];if(!session.carriedNotes.includes(txt))session.carriedNotes.push(txt);inp.value='';save();renderDeepSession();}
