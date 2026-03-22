@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chore Chart</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f9f9f7;color:#1a1a1a;min-height:100vh;}
+.app{max-width:900px;margin:0 auto;padding:1.5rem 1rem;}
+h1{font-size:18px;font-weight:600;margin-bottom:1.5rem;color:#1a1a1a;}
+.tabs{display:flex;border-bottom:1px solid #e5e5e3;margin-bottom:1.5rem;}
+.tab{font-size:13px;padding:7px 14px;cursor:pointer;color:#888;border-bottom:2px solid transparent;margin-bottom:-1px;}
+.tab.active{color:#1a1a1a;font-weight:500;border-bottom-color:#1a1a1a;}
+.week-nav{display:flex;align-items:center;gap:8px;margin-bottom:1.25rem;}
+.week-title{font-size:16px;font-weight:500;flex:1;}
+.week-sub{font-size:12px;color:#888;margin-top:2px;}
+button{font-family:inherit;}
+button.advance{padding:6px 14px;border-radius:8px;border:1px solid #ddd;background:#fff;font-size:13px;font-weight:500;cursor:pointer;color:#1a1a1a;}
+button.advance:hover{background:#f5f5f3;}
+.banner{border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:10px;}
+.banner-vac{background:#faeeda;border:1px solid #fac775;color:#633806;}
+.banner-waiting{background:#e6f1fb;border:1px solid #b5d4f4;color:#0c447c;}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+@media(max-width:640px){.grid{grid-template-columns:repeat(2,1fr);}}
+.person-col{display:flex;flex-direction:column;}
+.person-card{background:#fff;border:1px solid #e5e5e3;border-radius:12px;overflow:hidden;}
+.person-header{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #e5e5e3;}
+.avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0;}
+.av-0{background:#eeedfe;color:#3c3489;}.av-1{background:#e1f5ee;color:#085041;}.av-2{background:#faece7;color:#712b13;}.av-3{background:#faeeda;color:#633806;}
+.person-name{font-size:13px;font-weight:500;}
+.away-badge{font-size:10px;padding:2px 6px;border-radius:8px;background:#faeeda;color:#633806;margin-left:auto;white-space:nowrap;}
+.section-block{padding:10px 12px;border-bottom:1px solid #e5e5e3;}
+.section-block:last-child{border-bottom:none;}
+.section-title{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:#aaa;margin-bottom:7px;display:flex;align-items:center;gap:6px;}
+.covering-badge{font-size:9px;padding:1px 5px;border-radius:6px;background:#faece7;color:#993c1d;margin-left:auto;}
+.swap-btn{font-size:9px;padding:1px 6px;border-radius:6px;border:1px solid #ddd;background:none;cursor:pointer;color:#aaa;margin-left:auto;white-space:nowrap;}
+.swap-btn:hover{background:#f5f5f3;color:#1a1a1a;}
+.swapped-badge{font-size:9px;padding:1px 5px;border-radius:6px;background:#eeedfe;color:#534ab7;}
+.swap-picker{display:flex;gap:4px;margin-left:auto;align-items:center;}
+.swap-picker select{font-size:11px;padding:1px 4px;border:1px solid #ddd;border-radius:6px;background:#fff;color:#1a1a1a;}
+.swap-picker button{font-size:10px;padding:1px 6px;border-radius:6px;border:1px solid #ddd;background:none;cursor:pointer;color:#888;}
+.swap-picker button:hover{background:#f5f5f3;}
+.chore-row{display:flex;align-items:flex-start;gap:6px;padding:2px 0;}
+.chore-row label{display:flex;align-items:flex-start;gap:6px;cursor:pointer;font-size:11px;color:#666;flex:1;line-height:1.4;}
+.chore-row label.done{text-decoration:line-through;opacity:.4;}
+.chore-row input[type=checkbox]{width:12px;height:12px;cursor:pointer;flex-shrink:0;margin-top:2px;accent-color:#1a1a1a;}
+.away-block{padding:16px 12px;display:flex;align-items:center;justify-content:center;}
+.away-label{font-size:11px;color:#aaa;}
+.progress-row{display:flex;justify-content:space-between;align-items:center;margin-top:1.25rem;padding-top:1rem;border-top:1px solid #e5e5e3;}
+.progress-text{font-size:12px;color:#888;}
+input[type=date],input[type=text]{font-size:13px;padding:6px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;width:100%;font-family:inherit;}
+input[type=date]:focus,input[type=text]:focus{outline:none;border-color:#aaa;}
+select{font-size:13px;padding:6px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;font-family:inherit;}
+button.sm{padding:5px 11px;border-radius:8px;border:1px solid #ddd;background:none;font-size:12px;cursor:pointer;color:#888;}
+button.sm:hover{background:#f5f5f3;}
+.card{background:#fff;border:1px solid #e5e5e3;border-radius:12px;padding:12px 14px;margin-bottom:10px;}
+.del-btn{background:none;border:none;font-size:14px;cursor:pointer;color:#ccc;padding:0 2px;line-height:1;}
+.del-btn:hover{color:#1a1a1a;}
+.add-row{display:flex;gap:8px;margin-top:8px;}
+.add-row input{flex:1;}
+.sec-label{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:#aaa;margin-bottom:6px;}
+.vac-range-row{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #e5e5e3;font-size:12px;color:#888;}
+.vac-range-row:last-of-type{border-bottom:none;}
+.person-away-block{margin-bottom:10px;}
+.tabs-inner{display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap;}
+.tab-inner{font-size:12px;padding:5px 12px;border-radius:20px;cursor:pointer;border:1px solid #ddd;color:#888;background:none;}
+.tab-inner.active{background:#f5f5f3;color:#1a1a1a;font-weight:500;}
+.session-title{font-size:20px;font-weight:500;margin-bottom:3px;}
+.session-task-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #e5e5e3;}
+.session-task-row:last-child{border-bottom:none;}
+.session-task-row label{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#666;flex:1;}
+.session-task-row label.done{text-decoration:line-through;opacity:.45;}
+.session-task-row input[type=checkbox]{accent-color:#1a1a1a;}
+.defer-btn{font-size:11px;padding:2px 8px;border-radius:8px;border:1px solid #ddd;background:none;cursor:pointer;color:#aaa;white-space:nowrap;}
+.defer-btn:hover{background:#f5f5f3;}
+.deferred-badge{font-size:10px;padding:2px 6px;border-radius:6px;background:#eeedfe;color:#534ab7;white-space:nowrap;}
+.carried-badge{font-size:10px;padding:2px 6px;border-radius:6px;background:#faece7;color:#993c1d;white-space:nowrap;}
+.overdue-badge{font-size:10px;padding:2px 6px;border-radius:6px;background:#fcebeb;color:#a32d2d;white-space:nowrap;}
+.due-soon-badge{font-size:10px;padding:2px 6px;border-radius:6px;background:#faeeda;color:#633806;white-space:nowrap;}
+.last-cleaned{font-size:11px;color:#aaa;white-space:nowrap;}
+.task-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #e5e5e3;flex-wrap:wrap;}
+.task-row:last-child{border-bottom:none;}
+.task-name{font-size:13px;color:#666;flex:1;min-width:120px;}
+.archive-session{padding:10px 14px;border-bottom:1px solid #e5e5e3;cursor:pointer;}
+.archive-session:last-child{border-bottom:none;}
+.archive-session:hover{background:#f9f9f7;}
+.archive-month{font-size:13px;font-weight:500;}
+.archive-preview{font-size:11px;color:#aaa;margin-top:2px;}
+.back-btn{font-size:12px;color:#888;cursor:pointer;display:flex;align-items:center;gap:4px;margin-bottom:1rem;}
+.back-btn:hover{color:#1a1a1a;}
+.preview-block{margin-top:2rem;padding-top:1.25rem;border-top:1px solid #e5e5e3;}
+.preview-title{font-size:14px;font-weight:500;margin-bottom:10px;}
+.preview-item{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #e5e5e3;font-size:12px;color:#aaa;}
+.preview-item:last-child{border-bottom:none;}
+.empty-state{font-size:13px;color:#aaa;padding:.5rem 0 1rem;}
+.note-item{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #e5e5e3;font-size:13px;color:#666;}
+.note-item:last-child{border-bottom:none;}
+#save-indicator{position:fixed;top:12px;right:12px;font-size:11px;padding:4px 10px;border-radius:20px;background:#e1f5ee;color:#085041;border:1px solid #9fe1cb;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999;}
+#save-indicator.show{opacity:1;}
+</style>
+</head>
+<body>
+<div id="save-indicator">Saved ✓</div>
+<div class="app">
+  <h1>🏠 Chore Chart</h1>
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('weekly')">Weekly Chores</div>
+    <div class="tab" onclick="switchTab('deepclean')">Monthly Deep Clean</div>
+    <div class="tab" onclick="switchTab('settings')">Settings</div>
+  </div>
+
+  <div id="tab-weekly">
+    <div class="week-nav">
+      <div><div class="week-title" id="wk-title">Loading...</div><div class="week-sub" id="wk-sub"></div></div>
+      <button class="advance" onclick="manualAdvance()">Rotate now →</button>
+    </div>
+    <div id="vac-banner" style="display:none"></div>
+    <div id="waiting-banner" style="display:none"></div>
+    <div class="grid" id="weekly-grid"></div>
+    <div class="progress-row"><div class="progress-text" id="progress-text"></div></div>
+  </div>
+
+  <div id="tab-deepclean" style="display:none">
+    <div class="tabs-inner">
+      <div class="tab-inner active" onclick="switchDeepTab('session')" id="dtab-session">This session</div>
+      <div class="tab-inner" onclick="switchDeepTab('tasks')" id="dtab-tasks">Task list</div>
+      <div class="tab-inner" onclick="switchDeepTab('archive')" id="dtab-archive">Archive</div>
+    </div>
+    <div id="deep-session"></div>
+    <div id="deep-tasks" style="display:none"></div>
+    <div id="deep-archive" style="display:none"></div>
+  </div>
+
+  <div id="tab-settings" style="display:none">
+    <div class="sec-label" style="margin-bottom:10px;">Away dates</div>
+    <div class="card" style="margin-bottom:1.5rem;">
+      <div style="font-size:13px;color:#888;margin-bottom:12px;">Set away dates for any roommate. Their chores will auto-redistribute during those weeks.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div><div class="sec-label">Roommate</div>
+          <select id="vac-who" style="width:100%"><option value="0">Sarah</option><option value="1">Jess</option><option value="2">AK</option><option value="3">Valerie</option></select>
+        </div>
+        <div><div class="sec-label">From</div><input type="date" id="vac-from"/></div>
+        <div><div class="sec-label">To</div><input type="date" id="vac-to"/></div>
+        <div style="display:flex;align-items:flex-end;"><button class="sm" onclick="addVacation()" style="width:100%;">Add</button></div>
+      </div>
+      <div id="vac-list"></div>
+    </div>
+    <div class="sec-label" style="margin-bottom:8px;">House sections</div>
+    <div id="section-editor" style="margin-bottom:1.5rem;"></div>
+    <div class="sec-label" style="margin-bottom:8px;">Bathroom sections</div>
+    <div id="bath-section-editor"></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+// ============================================================
+// PASTE YOUR FIREBASE CONFIG HERE (from Firebase Console)
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyA8PBGlnHG05zjMmD8T_S01ss70qoYOg3Y",
+  authDomain: "th-chore-chart.firebaseapp.com",
+  databaseURL: "https://th-chore-chart-default-rtdb.firebaseio.com",
+  projectId: "th-chore-chart",
+  storageBucket: "th-chore-chart.firebasestorage.app",
+  messagingSenderId: "995383873622",
+  appId: "1:995383873622:web:721ea646bb5e5104c2abf7"
+};
+// ============================================================
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const dataRef = db.ref('choreChart');
+
+const RM=[{name:'Sarah',initials:'SA',av:'av-0'},{name:'Jess',initials:'JE',av:'av-1'},{name:'AK',initials:'AK',av:'av-2'},{name:'Valerie',initials:'VA',av:'av-3'}];
+const ALL=[0,1,2,3],BATH=[1,2,3];
+const MONTH_NAMES=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const FREQ_DAYS={monthly:30,quarterly:90,yearly:365};
+let deepTab='session',archiveViewKey=null,saveTimeout=null,isLoaded=false,isSaving=false;
+
+const DEFAULT_SECTIONS=[
+  {name:'Living Room',chores:['Dust surfaces','Vacuum rug','Tidy & organize','Wipe down coffee table','Reset couch']},
+  {name:'Kitchen',chores:['Wipe counters & stove','Clean sink','Wipe cabinet and appliance handles','Wipe down stove hood','Wash kitchen towels']},
+  {name:'Floors',chores:['Sweep/vacuum','Mop']},
+  {name:'Misc',chores:['Get/organize mail','Take out recycling','Wipe down light switches and doorknobs in common areas']},
+];
+const DEFAULT_BATH=[
+  {name:'Sink & Toilet',chores:['Scrub toilet bowl','Wipe seat & tank','Clean sink & faucet','Wipe mirror']},
+  {name:'Floors & Towels',chores:['Sweep and mop','Wash towels and bath mats']},
+  {name:'Shower/Tub/Walls',chores:['Scrub tub and shower','Wipe walls and tiles']},
+];
+const DEFAULT_TASKS=[
+  {text:'Clean toaster oven',freq:'monthly',lastCleaned:null},
+  {text:'Clean microwave',freq:'monthly',lastCleaned:null},
+  {text:'Wipe down cabinet fronts',freq:'monthly',lastCleaned:null},
+  {text:'Wipe down trash area',freq:'monthly',lastCleaned:null},
+  {text:'Wipe down backsplash and appliances',freq:'monthly',lastCleaned:null},
+  {text:'Dust cobwebs',freq:'quarterly',lastCleaned:null},
+  {text:'Wipe baseboards',freq:'quarterly',lastCleaned:null},
+  {text:'Clean out fridge',freq:'quarterly',lastCleaned:null},
+  {text:'Clean out freezer',freq:'quarterly',lastCleaned:null},
+  {text:'Clean dishwasher',freq:'quarterly',lastCleaned:null},
+  {text:'Wash trash cans',freq:'quarterly',lastCleaned:null},
+  {text:'Clean out pantry corner',freq:'quarterly',lastCleaned:null},
+  {text:'Clean windows',freq:'yearly',lastCleaned:null},
+  {text:'Organize coat closet',freq:'yearly',lastCleaned:null},
+  {text:'Organize laundry closet',freq:'yearly',lastCleaned:null},
+  {text:'Clean AC filter',freq:'yearly',lastCleaned:null},
+  {text:'Deep clean oven',freq:'yearly',lastCleaned:null},
+  {text:'Clean washing machine',freq:'yearly',lastCleaned:null},
+  {text:'Replace stove hood vents',freq:'yearly',lastCleaned:null},
+];
+
+let S={
+  baseMonday:getMon(new Date()),rotOffset:0,bathRotOffset:0,
+  checks:{},bathChecks:{},vacRanges:[],lastRotatedMonday:null,
+  weekSwaps:{},
+  sections:DEFAULT_SECTIONS.map(s=>({...s,chores:[...s.chores]})),
+  bathSections:DEFAULT_BATH.map(s=>({...s,chores:[...s.chores]})),
+  deepSessions:{},deepTasks:DEFAULT_TASKS.map(t=>({...t})),
+};
+
+function getMon(d){const c=new Date(d);const day=c.getDay();c.setDate(c.getDate()+(day===0?-6:1-day));c.setHours(0,0,0,0);return c.getTime();}
+function fmtDate(ts){return new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric'});}
+function fmtDateStr(s){return new Date(s+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});}
+function weekKey(){return 'w'+S.rotOffset;}
+function bathKey(){return 'b'+S.bathRotOffset;}
+function getESTNow(){return new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));}
+function currentSessionKey(){const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;}
+function nextSessionKey(){const n=new Date();const nm=new Date(n.getFullYear(),n.getMonth()+1,1);return `${nm.getFullYear()}-${String(nm.getMonth()+1).padStart(2,'0')}`;}
+function sessionLabel(key){const[y,m]=key.split('-');return `${MONTH_NAMES[parseInt(m)-1]} ${y}`;}
+function showSaved(){const el=document.getElementById('save-indicator');el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1500);}
+
+function save(){
+  if(!isLoaded)return;
+  clearTimeout(saveTimeout);
+  saveTimeout=setTimeout(()=>{
+    isSaving=true;
+    dataRef.set(JSON.parse(JSON.stringify(S))).then(()=>{isSaving=false;showSaved();}).catch(e=>{isSaving=false;console.error('Save failed',e);});
+  },600);
+}
+
+function mergeLoaded(d){
+  Object.assign(S,{
+    baseMonday:d.baseMonday||S.baseMonday,rotOffset:d.rotOffset||0,bathRotOffset:d.bathRotOffset||0,
+    checks:d.checks||{},bathChecks:d.bathChecks||{},vacRanges:d.vacRanges||[],
+    lastRotatedMonday:d.lastRotatedMonday||null,weekSwaps:d.weekSwaps||{},
+    sections:d.sections||S.sections,bathSections:d.bathSections||S.bathSections,
+    deepSessions:d.deepSessions||{},deepTasks:d.deepTasks||S.deepTasks,
+  });
+}
+
+function isTaskDue(task,sessionKey){
+  const sess=S.deepSessions[sessionKey];
+  if(sess&&(sess.deferred||[]).includes(task.text))return true;
+  if(!task.lastCleaned)return true;
+  const freqDays=FREQ_DAYS[task.freq];if(!freqDays)return true;
+  const[sy,sm]=sessionKey.split('-').map(Number);
+  const sessionStart=new Date(sy,sm-1,1).getTime();
+  const lastMs=new Date(task.lastCleaned+'T12:00:00').getTime();
+  return (sessionStart-lastMs)/86400000>=freqDays-7;
+}
+
+function getSession(key){
+  if(!S.deepSessions[key])S.deepSessions[key]={date:'',items:[],deferred:[],previewNotes:[],carriedNotes:[]};
+  const s=S.deepSessions[key];
+  if(!s.deferred)s.deferred=[];if(!s.previewNotes)s.previewNotes=[];if(!s.carriedNotes)s.carriedNotes=[];
+  return s;
+}
+
+function isAway(pi){
+  const mon=S.baseMonday,sun=mon+6*86400000;
+  for(const r of S.vacRanges){if(r.who!==pi)continue;const f=new Date(r.from+'T12:00:00').getTime(),t=new Date(r.to+'T12:00:00').getTime();if(mon<=t&&sun>=f)return true;}
+  return false;
+}
+
+function getHouseAssignments(){
+  const rot=S.rotOffset,result={};ALL.forEach(i=>result[i]=[]);
+  const swaps=S.weekSwaps[weekKey()]||{};
+  S.sections.forEach((sec,si)=>{
+    let idx=(rot+si)%4,covering=false,tries=0;
+    while(isAway(idx)&&tries<4){idx=(idx+1)%4;covering=true;tries++;}
+    // apply swap if one exists for this section
+    const swapKey='h_'+si;
+    let swapped=false;
+    if(swaps[swapKey]!==undefined){idx=swaps[swapKey];swapped=true;covering=false;}
+    result[idx].push({sec,si,covering,swapped});
+  });
+  return result;
+}
+
+function getBathAssignments(){
+  const rot=S.bathRotOffset,result={1:[],2:[],3:[]};
+  const swaps=S.weekSwaps[weekKey()]||{};
+  S.bathSections.forEach((sec,si)=>{
+    let pidx=(rot+si)%BATH.length,pi=BATH[pidx],covering=false,tries=0;
+    while(isAway(pi)&&tries<BATH.length){pidx=(pidx+1)%BATH.length;pi=BATH[pidx];covering=true;tries++;}
+    const swapKey='b_'+si;
+    let swapped=false;
+    if(swaps[swapKey]!==undefined){pi=swaps[swapKey];swapped=true;covering=false;}
+    result[pi].push({sec,si,covering,swapped});
+  });
+  return result;
+}
+
+function countAllChores(){
+  let total=0,done=0;
+  const checks=S.checks[weekKey()]||{},bathChecks=S.bathChecks[bathKey()]||{};
+  const hA=getHouseAssignments();
+  ALL.forEach(pi=>{if(isAway(pi))return;(hA[pi]||[]).forEach(({sec,si})=>sec.chores.forEach((_,ci)=>{total++;if(checks[`${pi}_${si}_${ci}`])done++;}));});
+  BATH.forEach(pi=>{if(isAway(pi))return;getBathAssignments()[pi].forEach(({sec,si})=>sec.chores.forEach((_,ci)=>{total++;if((S.bathChecks[bathKey()]||{})[`${pi}_${si}_${ci}`])done++;}));});
+  return{total,done};
+}
+
+function doRotate(){S.baseMonday=getMon(new Date());S.rotOffset+=1;S.bathRotOffset+=1;S.lastRotatedMonday=S.baseMonday;save();}
+function manualAdvance(){doRotate();renderWeekly();}
+
+function toggleCheck(type,key){
+  if(type==='house'){const wk=weekKey();if(!S.checks[wk])S.checks[wk]={};S.checks[wk][key]=!S.checks[wk][key];}
+  else{const bk=bathKey();if(!S.bathChecks[bk])S.bathChecks[bk]={};S.bathChecks[bk][key]=!S.bathChecks[bk][key];}
+  save();renderWeekly();
+}
+
+function swapSection(type,si,newPi){
+  const wk=weekKey();
+  if(!S.weekSwaps[wk])S.weekSwaps[wk]={};
+  S.weekSwaps[wk][type+'_'+si]=parseInt(newPi);
+  save();renderWeekly();
+}
+function clearSwap(type,si){
+  const wk=weekKey();
+  if(S.weekSwaps[wk])delete S.weekSwaps[wk][type+'_'+si];
+  save();renderWeekly();
+}
+// track which section is showing the picker
+let swapPickerOpen=null;
+function toggleSwapPicker(id){
+  swapPickerOpen=swapPickerOpen===id?null:id;
+  renderWeekly();
+}
+
+function renderWeekly(){
+  const wk=weekKey(),bk=bathKey();
+  const checks=S.checks[wk]||{},bathChecks=S.bathChecks[bk]||{};
+  const mon=S.baseMonday,sun=mon+6*86400000;
+  document.getElementById('wk-title').textContent='Week of '+fmtDate(mon)+' – '+fmtDate(sun);
+  document.getElementById('wk-sub').textContent='Rotation '+(S.rotOffset%4+1)+' of 4  ·  auto-rotates Monday 9pm EST when all done';
+  const awayPeople=ALL.filter(i=>isAway(i));
+  const vacBanner=document.getElementById('vac-banner');
+  if(awayPeople.length){vacBanner.className='banner banner-vac';vacBanner.style.display='';vacBanner.textContent=awayPeople.map(i=>RM[i].name).join(' & ')+(awayPeople.length>1?' are':' is')+' away — chores redistributed.';}
+  else vacBanner.style.display='none';
+  const{total,done}=countAllChores();
+  const est=getESTNow();
+  const isPastMon=est.getDay()>1||(est.getDay()===1&&est.getHours()>=21);
+  const allDone=total>0&&done===total;
+  const waitBanner=document.getElementById('waiting-banner');
+  if(allDone&&isPastMon){waitBanner.style.display='none';setTimeout(()=>{doRotate();renderWeekly();},1800);}
+  else if(!allDone&&isPastMon&&est.getDay()===1&&est.getHours()>=21){waitBanner.className='banner banner-waiting';waitBanner.style.display='';waitBanner.textContent='Monday 9pm passed — waiting for all chores to be checked off before rotating.';}
+  else waitBanner.style.display='none';
+  const hA=getHouseAssignments(),bA=getBathAssignments();
+  const grid=document.getElementById('weekly-grid');grid.innerHTML='';
+  let totalC=0,doneC=0;
+  ALL.forEach(pi=>{
+    const rm=RM[pi],away=isAway(pi);
+    const col=document.createElement('div');col.className='person-col';
+    let html=`<div class="person-card"><div class="person-header"><div class="avatar ${rm.av}">${rm.initials}</div><span class="person-name">${rm.name}</span>${away?`<span class="away-badge">Away</span>`:''}</div>`;
+    if(away){html+=`<div class="away-block"><span class="away-label">Away this week</span></div>`;}
+    else{
+      (hA[pi]||[]).forEach(({sec,si,covering,swapped})=>{
+        const pickerId='h_'+si;
+        const isOpen=swapPickerOpen===pickerId;
+        const otherOptions=ALL.filter(p=>p!==pi&&!isAway(p)).map(p=>`<option value="${p}">${RM[p].name}</option>`).join('');
+        let titleRight='';
+        if(swapped) titleRight=`<span class="swapped-badge">swapped</span><button class="swap-btn" style="margin-left:4px" onclick="clearSwap('h',${si})">undo</button>`;
+        else if(isOpen) titleRight=`<span class="swap-picker"><select id="sp-h-${si}">${otherOptions}</select><button onclick="swapSection('h',${si},document.getElementById('sp-h-${si}').value)">Assign</button><button onclick="swapPickerOpen=null;renderWeekly()">✕</button></span>`;
+        else titleRight=`<button class="swap-btn" onclick="toggleSwapPicker('${pickerId}')">swap ⇄</button>`;
+        html+=`<div class="section-block"><div class="section-title">${sec.name}${covering?`<span class="covering-badge">covering</span>`:''}${titleRight}</div>`;
+        sec.chores.forEach((chore,ci)=>{const key=`${pi}_${si}_${ci}`,isDone=!!checks[key];totalC++;if(isDone)doneC++;html+=`<div class="chore-row"><label class="${isDone?'done':''}"><input type="checkbox" ${isDone?'checked':''} onchange="toggleCheck('house','${key}')" />${chore}</label></div>`;});
+        html+=`</div>`;
+      });
+      if(BATH.includes(pi)){
+        (bA[pi]||[]).forEach(({sec,si,covering,swapped})=>{
+          const pickerId='b_'+si;
+          const isOpen=swapPickerOpen===pickerId;
+          const otherOptions=BATH.filter(p=>p!==pi&&!isAway(p)).map(p=>`<option value="${p}">${RM[p].name}</option>`).join('');
+          let titleRight='';
+          if(swapped) titleRight=`<span class="swapped-badge">swapped</span><button class="swap-btn" style="margin-left:4px" onclick="clearSwap('b',${si})">undo</button>`;
+          else if(isOpen) titleRight=`<span class="swap-picker"><select id="sp-b-${si}">${otherOptions}</select><button onclick="swapSection('b',${si},document.getElementById('sp-b-${si}').value)">Assign</button><button onclick="swapPickerOpen=null;renderWeekly()">✕</button></span>`;
+          else titleRight=`<button class="swap-btn" onclick="toggleSwapPicker('${pickerId}')">swap ⇄</button>`;
+          html+=`<div class="section-block"><div class="section-title">${sec.name}${covering?`<span class="covering-badge">covering</span>`:''}${titleRight}</div>`;
+          sec.chores.forEach((chore,ci)=>{const key=`${pi}_${si}_${ci}`,isDone=!!bathChecks[key];totalC++;if(isDone)doneC++;html+=`<div class="chore-row"><label class="${isDone?'done':''}"><input type="checkbox" ${isDone?'checked':''} onchange="toggleCheck('bath','${key}')" />${chore}</label></div>`;});
+          html+=`</div>`;
+        });
+      }
+    }
+    html+=`</div>`;col.innerHTML=html;grid.appendChild(col);
+  });
+  document.getElementById('progress-text').textContent=`${doneC} of ${totalC} chores done this week`;
+}
+
+function buildSessionItems(key){
+  const session=getSession(key);
+  const sessionItems=session.items||[];
+  const sessionTexts=new Set(sessionItems.map(i=>i.text));
+  const dueMaster=S.deepTasks.filter(t=>isTaskDue(t,key)&&!sessionTexts.has(t.text));
+  const carriedNotes=(session.carriedNotes||[]).filter(n=>!sessionTexts.has(n));
+  const all=[...dueMaster.map(t=>({text:t.text,done:false,auto:true})),...carriedNotes.filter(n=>!dueMaster.find(t=>t.text===n)).map(n=>({text:n,done:false,carried:true})),...sessionItems];
+  const seen=new Set();return all.filter(i=>{if(seen.has(i.text))return false;seen.add(i.text);return true;});
+}
+
+function renderDeepSession(){
+  const key=archiveViewKey||currentSessionKey();
+  const nextKey=nextSessionKey();
+  const session=getSession(key);
+  const isArchive=!!archiveViewKey;
+  const el=document.getElementById('deep-session');
+  let html='';
+  if(isArchive)html+=`<div class="back-btn" onclick="archiveViewKey=null;switchDeepTab('archive')">← Back to archive</div>`;
+  html+=`<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem;gap:12px;flex-wrap:wrap;"><div><div class="session-title">${sessionLabel(key)} Cleaning</div>`;
+  if(session.date)html+=`<div style="font-size:12px;color:#888;margin-top:2px;">Session date: ${fmtDateStr(session.date)}</div>`;
+  html+=`</div>`;
+  if(!isArchive)html+=`<div style="display:flex;align-items:center;gap:8px;"><input type="date" value="${session.date||''}" style="width:150px;" onchange="saveSessionDate(this.value,'${key}')" /><span style="font-size:11px;color:#aaa;">session date</span></div>`;
+  html+=`</div>`;
+  const allItems=buildSessionItems(key);
+  if(!allItems.length&&!isArchive){html+=`<div class="empty-state">No tasks due this session. Add one below or update last-cleaned dates in the Task list.</div>`;}
+  else{
+    html+=`<div class="card" style="padding:4px 14px;margin-bottom:1rem;">`;
+    if(isArchive){
+      const doneItems=(session.items||[]).filter(i=>i.done);
+      if(!doneItems.length)html+=`<div style="padding:8px 0;font-size:13px;color:#aaa;">Nothing checked off this session.</div>`;
+      doneItems.forEach(item=>{html+=`<div class="session-task-row"><label class="done"><input type="checkbox" checked disabled />${item.text}</label></div>`;});
+    } else {
+      allItems.forEach(item=>{
+        const sessionIdx=(session.items||[]).findIndex(i=>i.text===item.text);
+        const isDone=sessionIdx>=0?session.items[sessionIdx].done:false;
+        const isDeferred=(session.deferred||[]).includes(item.text);
+        const safeText=item.text.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        html+=`<div class="session-task-row"><label class="${isDone?'done':''}"><input type="checkbox" ${isDone?'checked':''} onchange="toggleSessionItem('${key}','${safeText}',this.checked)" />${item.text}</label>`;
+        if(item.carried)html+=`<span class="carried-badge">from preview</span>`;
+        if(isDeferred)html+=`<span class="deferred-badge">deferred</span><button class="defer-btn" style="margin-left:2px" onclick="undoDefer('${key}','${safeText}')">undo</button>`;
+        else if(!isDone)html+=`<button class="defer-btn" onclick="deferTask('${key}','${safeText}')">Defer →</button>`;
+        if(sessionIdx>=0)html+=`<button class="del-btn" onclick="removeSessionItem('${key}','${safeText}')">×</button>`;
+        html+=`</div>`;
+      });
+    }
+    html+=`</div>`;
+  }
+  if(!isArchive){
+    html+=`<div class="add-row" style="margin-bottom:1.5rem;"><input type="text" id="new-session-item" placeholder="Add a task to this session..." onkeydown="if(event.key==='Enter')addSessionItem('${key}')" /><button class="sm" onclick="addSessionItem('${key}')">Add</button></div>`;
+    const nextSession=getSession(nextKey);
+    const nextDue=S.deepTasks.filter(t=>isTaskDue(t,nextKey));
+    const previewNotes=nextSession.previewNotes||[];
+    html+=`<div class="preview-block"><div class="preview-title">Preview — ${sessionLabel(nextKey)}</div>`;
+    if(nextDue.length){
+      html+=`<div class="sec-label" style="margin-bottom:6px;">Due next month</div><div class="card" style="padding:4px 14px;margin-bottom:1rem;">`;
+      nextDue.forEach(t=>{const isCarried=(nextSession.deferred||[]).includes(t.text);html+=`<div class="preview-item">${t.text}${isCarried?`<span class="carried-badge">carried over</span>`:''}</div>`;});
+      html+=`</div>`;
+    } else html+=`<div style="font-size:12px;color:#aaa;margin-bottom:1rem;">Nothing from the task list due next month yet.</div>`;
+    html+=`<div class="sec-label" style="margin-bottom:6px;">Other things to tackle</div><div class="card" style="padding:4px 14px;margin-bottom:8px;">`;
+    if(!previewNotes.length)html+=`<div style="padding:6px 0;font-size:12px;color:#aaa;">Nothing added yet.</div>`;
+    previewNotes.forEach((note,ni)=>{html+=`<div class="note-item">${note}<button class="del-btn" style="margin-left:auto" onclick="removePreviewNote('${nextKey}',${ni})">×</button></div>`;});
+    html+=`</div><div class="add-row"><input type="text" id="new-preview-note" placeholder="Add something for next session..." onkeydown="if(event.key==='Enter')addPreviewNote('${nextKey}')" /><button class="sm" onclick="addPreviewNote('${nextKey}')">Add</button></div></div>`;
+  }
+  el.innerHTML=html;
+}
+
+function toggleSessionItem(key,text,checked){
+  const session=getSession(key);if(!session.items)session.items=[];
+  const idx=session.items.findIndex(i=>i.text===text);
+  if(idx>=0)session.items[idx].done=checked;else session.items.push({text,done:checked});
+  if(checked){const ti=S.deepTasks.findIndex(t=>t.text===text);if(ti>=0)S.deepTasks[ti].lastCleaned=new Date().toISOString().slice(0,10);session.deferred=(session.deferred||[]).filter(d=>d!==text);}
+  save();renderDeepSession();
+}
+function undoDefer(key,text){
+  const session=getSession(key);
+  session.deferred=(session.deferred||[]).filter(d=>d!==text);
+  // also remove from next session's deferred
+  const nk=nextSessionKey();
+  const next=getSession(nk);
+  next.deferred=(next.deferred||[]).filter(d=>d!==text);
+  save();renderDeepSession();
+}
+  const session=getSession(key);if(!session.deferred)session.deferred=[];if(!session.deferred.includes(text))session.deferred.push(text);
+  const nk=nextSessionKey();const next=getSession(nk);if(!next.deferred)next.deferred=[];if(!next.deferred.includes(text))next.deferred.push(text);
+  save();renderDeepSession();
+}
+function removeSessionItem(key,text){const session=getSession(key);session.items=(session.items||[]).filter(i=>i.text!==text);save();renderDeepSession();}
+function addSessionItem(key){const inp=document.getElementById('new-session-item');const txt=inp.value.trim();if(!txt)return;const session=getSession(key);if(!session.items)session.items=[];if(!session.items.find(i=>i.text===txt))session.items.push({text:txt,done:false});inp.value='';save();renderDeepSession();}
+function addPreviewNote(nextKey){const inp=document.getElementById('new-preview-note');const txt=inp.value.trim();if(!txt)return;const session=getSession(nextKey);if(!session.previewNotes)session.previewNotes=[];if(!session.previewNotes.includes(txt))session.previewNotes.push(txt);if(!session.carriedNotes)session.carriedNotes=[];if(!session.carriedNotes.includes(txt))session.carriedNotes.push(txt);inp.value='';save();renderDeepSession();}
+function removePreviewNote(nextKey,ni){const session=getSession(nextKey);const note=(session.previewNotes||[])[ni];session.previewNotes=(session.previewNotes||[]).filter((_,i)=>i!==ni);session.carriedNotes=(session.carriedNotes||[]).filter(n=>n!==note);save();renderDeepSession();}
+function saveSessionDate(val,key){getSession(key).date=val;save();renderDeepSession();}
+
+function renderDeepTasks(){
+  const el=document.getElementById('deep-tasks');const now=new Date();let html='';
+  ['monthly','quarterly','yearly','adhoc'].forEach(freq=>{
+    const group=S.deepTasks.filter(t=>t.freq===freq);if(!group.length)return;
+    const label={monthly:'Monthly',quarterly:'Quarterly',yearly:'Yearly',adhoc:'Ad hoc'}[freq];
+    html+=`<div style="margin-bottom:1.25rem;"><div class="sec-label" style="margin-bottom:6px;">${label}</div><div class="card" style="padding:4px 14px;">`;
+    S.deepTasks.forEach((t,ti)=>{
+      if(t.freq!==freq)return;
+      const freqDays=FREQ_DAYS[freq]||null;let badge='',lastHTML='';
+      if(t.lastCleaned){const daysSince=Math.floor((now-new Date(t.lastCleaned+'T12:00:00'))/86400000);lastHTML=`<span class="last-cleaned">Last: ${fmtDateStr(t.lastCleaned)}</span>`;if(freqDays&&daysSince>freqDays+7)badge=`<span class="overdue-badge">Overdue</span>`;else if(freqDays&&daysSince>freqDays-7)badge=`<span class="due-soon-badge">Due soon</span>`;}
+      else if(freqDays)badge=`<span class="overdue-badge">Never done</span>`;
+      html+=`<div class="task-row"><span class="task-name">${t.text}</span>${badge}${lastHTML}<input type="date" title="Last cleaned" style="width:130px;font-size:11px;padding:3px 6px;" value="${t.lastCleaned||''}" onchange="setLastCleaned(${ti},this.value)" /><button class="del-btn" onclick="removeDeepTask(${ti})">×</button></div>`;
+    });
+    html+=`</div></div>`;
+  });
+  html+=`<div class="add-row"><input type="text" id="new-deep-task" placeholder="Add a task..." onkeydown="if(event.key==='Enter')addDeepTask()" /><select id="new-deep-freq"><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="yearly">Yearly</option><option value="adhoc">Ad hoc</option></select><button class="sm" onclick="addDeepTask()">Add</button></div>`;
+  el.innerHTML=html;
+}
+function setLastCleaned(ti,val){S.deepTasks[ti].lastCleaned=val||null;save();renderDeepTasks();}
+function removeDeepTask(ti){S.deepTasks.splice(ti,1);save();renderDeepTasks();}
+function addDeepTask(){const inp=document.getElementById('new-deep-task'),freq=document.getElementById('new-deep-freq').value,txt=inp.value.trim();if(!txt)return;S.deepTasks.push({text:txt,freq,lastCleaned:null});inp.value='';save();renderDeepTasks();}
+
+function renderDeepArchive(){
+  const el=document.getElementById('deep-archive');
+  const keys=Object.keys(S.deepSessions).filter(k=>k!==currentSessionKey()).sort().reverse();
+  if(!keys.length){el.innerHTML=`<div class="empty-state">No past sessions yet.</div>`;return;}
+  let html=`<div class="card" style="padding:0;">`;
+  keys.forEach(k=>{const sess=S.deepSessions[k];const items=(sess.items||[]).filter(i=>i.done);const preview=items.length?items.map(i=>i.text).join(', '):'No items checked off';html+=`<div class="archive-session" onclick="archiveViewKey='${k}';switchDeepTab('session')"><div class="archive-month">${sessionLabel(k)}</div><div class="archive-preview">${preview.slice(0,80)}${preview.length>80?'…':''}</div></div>`;});
+  html+=`</div>`;el.innerHTML=html;
+}
+
+function switchDeepTab(tab){
+  deepTab=tab;
+  ['session','tasks','archive'].forEach(t=>{document.getElementById('deep-'+t).style.display=t===tab?'':'none';document.getElementById('dtab-'+t).classList.toggle('active',t===tab);});
+  if(tab==='session')renderDeepSession();
+  if(tab==='tasks')renderDeepTasks();
+  if(tab==='archive')renderDeepArchive();
+}
+
+function renderSettings(){
+  const list=document.getElementById('vac-list');list.innerHTML='';
+  const grouped={0:[],1:[],2:[],3:[]};
+  S.vacRanges.forEach((r,i)=>grouped[r.who].push({r,i}));
+  let any=false;
+  ALL.forEach(pi=>{
+    const entries=grouped[pi];if(!entries.length)return;any=true;
+    const block=document.createElement('div');block.className='person-away-block';
+    let html=`<div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;"><div class="avatar ${RM[pi].av}" style="width:22px;height:22px;font-size:10px;">${RM[pi].initials}</div><span style="font-size:13px;font-weight:500;">${RM[pi].name}</span></div>`;
+    entries.forEach(({r,i})=>{html+=`<div class="vac-range-row">${fmtDateStr(r.from)} – ${fmtDateStr(r.to)}<button class="del-btn" onclick="removeVac(${i})">×</button></div>`;});
+    block.innerHTML=html;list.appendChild(block);
+  });
+  if(!any)list.innerHTML=`<div style="font-size:12px;color:#aaa;">No away dates set.</div>`;
+  function buildEd(id,sections,type){
+    const ed=document.getElementById(id);ed.innerHTML='';
+    sections.forEach((sec,si)=>{
+      const card=document.createElement('div');card.className='card';card.style.marginBottom='10px';
+      let html=`<div style="font-size:13px;font-weight:500;margin-bottom:8px;">${sec.name}</div>`;
+      sec.chores.forEach((c,ci)=>{html+=`<div style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:13px;color:#666;">${c}<button class="del-btn" onclick="removeChore('${type}',${si},${ci})">×</button></div>`;});
+      html+=`<div class="add-row"><input type="text" placeholder="Add chore..." id="nc-${type}-${si}" onkeydown="if(event.key==='Enter')addChore('${type}',${si})" /><button class="sm" onclick="addChore('${type}',${si})">Add</button></div>`;
+      card.innerHTML=html;ed.appendChild(card);
+    });
+  }
+  buildEd('section-editor',S.sections,'house');
+  buildEd('bath-section-editor',S.bathSections,'bath');
+}
+function addVacation(){
+  const who=parseInt(document.getElementById('vac-who').value);
+  const f=document.getElementById('vac-from').value,t=document.getElementById('vac-to').value;
+  if(!f||!t)return;S.vacRanges.push({who,from:f,to:t});
+  document.getElementById('vac-from').value='';document.getElementById('vac-to').value='';
+  save();renderSettings();renderWeekly();
+}
+function removeVac(i){S.vacRanges.splice(i,1);save();renderSettings();renderWeekly();}
+function addChore(type,si){const inp=document.getElementById(`nc-${type}-${si}`),txt=inp.value.trim();if(!txt)return;(type==='house'?S.sections:S.bathSections)[si].chores.push(txt);inp.value='';save();renderSettings();renderWeekly();}
+function removeChore(type,si,ci){(type==='house'?S.sections:S.bathSections)[si].chores.splice(ci,1);save();renderSettings();renderWeekly();}
+
+function switchTab(tab){
+  ['weekly','deepclean','settings'].forEach((t,i)=>{
+    document.getElementById('tab-'+t).style.display=t===tab?'':'none';
+    document.querySelectorAll('.tab')[i].classList.toggle('active',t===tab);
+  });
+  if(tab==='deepclean')switchDeepTab(deepTab);
+  if(tab==='settings')renderSettings();
+}
+
+// Load once, then listen for live updates
+dataRef.once('value').then(snapshot=>{
+  if(snapshot.exists())mergeLoaded(snapshot.val());
+  isLoaded=true;
+  const est=getESTNow();
+  if(est.getDay()===1&&est.getHours()>=21){
+    const thisMon=getMon(new Date());
+    if(S.lastRotatedMonday!==thisMon){const{total,done}=countAllChores();if(total>0&&done===total)doRotate();}
+  }
+  renderWeekly();
+}).catch(e=>{console.error('Firebase load failed:',e);isLoaded=true;renderWeekly();});
+
+dataRef.on('value',snapshot=>{
+  if(!isLoaded||isSaving||!snapshot.exists())return;
+  mergeLoaded(snapshot.val());
+  renderWeekly();
+  const dc=document.getElementById('tab-deepclean');
+  if(dc&&dc.style.display!=='none'){
+    if(deepTab==='session')renderDeepSession();
+    if(deepTab==='tasks')renderDeepTasks();
+    if(deepTab==='archive')renderDeepArchive();
+  }
+});
+</script>
+</body>
+</html>
