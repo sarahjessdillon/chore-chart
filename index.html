@@ -482,6 +482,7 @@ function undoDefer(key,text){
   next.deferred=(next.deferred||[]).filter(d=>d!==text);
   save();renderDeepSession();
 }
+function deferTask(key,text){
   const session=getSession(key);if(!session.deferred)session.deferred=[];if(!session.deferred.includes(text))session.deferred.push(text);
   const nk=nextSessionKey();const next=getSession(nk);if(!next.deferred)next.deferred=[];if(!next.deferred.includes(text))next.deferred.push(text);
   save();renderDeepSession();
