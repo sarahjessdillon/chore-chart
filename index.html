@@ -135,15 +135,15 @@ button.sm:hover{background:#f5f5f3;}
   <div id="tab-settings" style="display:none">
     <div class="sec-label" style="margin-bottom:10px;">Away dates</div>
     <div class="card" style="margin-bottom:1.5rem;">
-      <div style="font-size:13px;color:#888;margin-bottom:12px;">Set away dates for any roommate. Their chores will auto-redistribute during those weeks.</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-        <div><div class="sec-label">Roommate</div>
-          <select id="vac-who" style="width:100%"><option value="0">Sarah</option><option value="1">Jess</option><option value="2">AK</option><option value="3">Valerie</option></select>
-        </div>
-        <div><div class="sec-label">From</div><input type="date" id="vac-from"/></div>
-        <div><div class="sec-label">To</div><input type="date" id="vac-to"/></div>
-        <div style="display:flex;align-items:flex-end;"><button class="sm" onclick="addVacation()" style="width:100%;">Add</button></div>
+      <div style="margin-bottom:10px;">
+        <div class="sec-label">Roommate</div>
+        <select id="vac-who" style="width:100%"><option value="0">Sarah</option><option value="1">Jess</option><option value="2">AK</option><option value="3">Valerie</option></select>
       </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div><div class="sec-label">From</div><input type="date" id="vac-from" style="width:100%"/></div>
+        <div><div class="sec-label">To</div><input type="date" id="vac-to" style="width:100%"/></div>
+      </div>
+      <button class="sm" onclick="addVacation()" style="width:100%;padding:8px;font-size:13px;font-weight:500;">+ Add dates</button>
       <div id="vac-list"></div>
     </div>
     <div class="sec-label" style="margin-bottom:8px;">House sections</div>
@@ -534,17 +534,16 @@ function switchDeepTab(tab){
 
 function renderSettings(){
   const list=document.getElementById('vac-list');list.innerHTML='';
-  const grouped={0:[],1:[],2:[],3:[]};
-  S.vacRanges.forEach((r,i)=>grouped[r.who].push({r,i}));
-  let any=false;
-  ALL.forEach(pi=>{
-    const entries=grouped[pi];if(!entries.length)return;any=true;
-    const block=document.createElement('div');block.className='person-away-block';
-    let html=`<div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;"><div class="avatar ${RM[pi].av}" style="width:22px;height:22px;font-size:10px;">${RM[pi].initials}</div><span style="font-size:13px;font-weight:500;">${RM[pi].name}</span></div>`;
-    entries.forEach(({r,i})=>{html+=`<div class="vac-range-row">${fmtDateStr(r.from)} – ${fmtDateStr(r.to)}<button class="del-btn" onclick="removeVac(${i})">×</button></div>`;});
-    block.innerHTML=html;list.appendChild(block);
+  if(!S.vacRanges.length){list.innerHTML=`<div style="font-size:12px;color:#aaa;margin-top:12px;">No away dates set.</div>`;return;}
+  // flat list sorted by from date, with a divider above
+  list.innerHTML='<hr style="border:none;border-top:0.5px solid #e5e5e3;margin:12px 0;" />';
+  S.vacRanges.forEach((r,i)=>{
+    const pi=r.who;
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid #e5e5e3;font-size:13px;color:#666;';
+    row.innerHTML=`<div class="avatar ${RM[pi].av}" style="width:22px;height:22px;font-size:10px;flex-shrink:0;">${RM[pi].initials}</div><span style="font-weight:500;color:#1a1a1a;">${RM[pi].name}</span><span style="margin-left:4px;">${fmtDateStr(r.from)} – ${fmtDateStr(r.to)}</span><button class="del-btn" style="margin-left:auto" onclick="removeVac(${i})">×</button>`;
+    list.appendChild(row);
   });
-  if(!any)list.innerHTML=`<div style="font-size:12px;color:#aaa;">No away dates set.</div>`;
   function buildEd(id,sections,type){
     const ed=document.getElementById(id);ed.innerHTML='';
     sections.forEach((sec,si)=>{
