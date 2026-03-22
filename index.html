@@ -22,7 +22,10 @@ button.advance:hover{background:#f5f5f3;}
 .banner-vac{background:#faeeda;border:1px solid #fac775;color:#633806;}
 .banner-waiting{background:#e6f1fb;border:1px solid #b5d4f4;color:#0c447c;}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
-@media(max-width:640px){.grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:640px){
+  .grid{grid-template-columns:1fr;}
+  .dates-row{grid-template-columns:1fr !important;}
+}
 .person-col{display:flex;flex-direction:column;}
 .person-card{background:#fff;border:1px solid #e5e5e3;border-radius:12px;overflow:hidden;}
 .person-header{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #e5e5e3;}
@@ -139,7 +142,7 @@ button.sm:hover{background:#f5f5f3;}
         <div class="sec-label">Roommate</div>
         <select id="vac-who" style="width:100%"><option value="0">Sarah</option><option value="1">Jess</option><option value="2">AK</option><option value="3">Valerie</option></select>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div class="dates-row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
         <div><div class="sec-label">From</div><input type="date" id="vac-from" style="width:100%"/></div>
         <div><div class="sec-label">To</div><input type="date" id="vac-to" style="width:100%"/></div>
       </div>
