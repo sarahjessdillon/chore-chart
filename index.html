@@ -534,16 +534,18 @@ function switchDeepTab(tab){
 
 function renderSettings(){
   const list=document.getElementById('vac-list');list.innerHTML='';
-  if(!S.vacRanges.length){list.innerHTML=`<div style="font-size:12px;color:#aaa;margin-top:12px;">No away dates set.</div>`;return;}
-  // flat list sorted by from date, with a divider above
-  list.innerHTML='<hr style="border:none;border-top:0.5px solid #e5e5e3;margin:12px 0;" />';
-  S.vacRanges.forEach((r,i)=>{
-    const pi=r.who;
-    const row=document.createElement('div');
-    row.style.cssText='display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid #e5e5e3;font-size:13px;color:#666;';
-    row.innerHTML=`<div class="avatar ${RM[pi].av}" style="width:22px;height:22px;font-size:10px;flex-shrink:0;">${RM[pi].initials}</div><span style="font-weight:500;color:#1a1a1a;">${RM[pi].name}</span><span style="margin-left:4px;">${fmtDateStr(r.from)} – ${fmtDateStr(r.to)}</span><button class="del-btn" style="margin-left:auto" onclick="removeVac(${i})">×</button>`;
-    list.appendChild(row);
-  });
+  if(!S.vacRanges.length){
+    list.innerHTML=`<div style="font-size:12px;color:#aaa;margin-top:12px;">No away dates set.</div>`;
+  } else {
+    list.innerHTML='<hr style="border:none;border-top:0.5px solid #e5e5e3;margin:12px 0;" />';
+    S.vacRanges.forEach((r,i)=>{
+      const pi=r.who;
+      const row=document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid #e5e5e3;font-size:13px;color:#666;';
+      row.innerHTML=`<div class="avatar ${RM[pi].av}" style="width:22px;height:22px;font-size:10px;flex-shrink:0;">${RM[pi].initials}</div><span style="font-weight:500;color:#1a1a1a;">${RM[pi].name}</span><span style="margin-left:4px;">${fmtDateStr(r.from)} – ${fmtDateStr(r.to)}</span><button class="del-btn" style="margin-left:auto" onclick="removeVac(${i})">×</button>`;
+      list.appendChild(row);
+    });
+  }
   function buildEd(id,sections,type){
     const ed=document.getElementById(id);ed.innerHTML='';
     sections.forEach((sec,si)=>{
