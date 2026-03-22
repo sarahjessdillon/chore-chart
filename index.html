@@ -22,6 +22,8 @@ button.advance:hover{background:#f5f5f3;}
 .banner-vac{background:#faeeda;border:1px solid #fac775;color:#633806;}
 .banner-waiting{background:#e6f1fb;border:1px solid #b5d4f4;color:#0c447c;}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.dates-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;min-width:0;}
+.dates-row > div{min-width:0;overflow:hidden;}
 @media(max-width:640px){
   .grid{grid-template-columns:1fr;}
   .dates-row{grid-template-columns:1fr !important;}
@@ -52,7 +54,7 @@ button.advance:hover{background:#f5f5f3;}
 .away-label{font-size:11px;color:#aaa;}
 .progress-row{display:flex;justify-content:space-between;align-items:center;margin-top:1.25rem;padding-top:1rem;border-top:1px solid #e5e5e3;}
 .progress-text{font-size:12px;color:#888;}
-input[type=date],input[type=text]{font-size:13px;padding:6px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;width:100%;max-width:100%;box-sizing:border-box;font-family:inherit;}
+input[type=date],input[type=text]{font-size:13px;padding:8px 10px;line-height:1.4;height:auto;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;width:100%;max-width:100%;min-width:0;box-sizing:border-box;font-family:inherit;-webkit-appearance:none;appearance:none;display:block;}
 input[type=date]:focus,input[type=text]:focus{outline:none;border-color:#aaa;}
 select{font-size:13px;padding:6px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;font-family:inherit;}
 button.sm{padding:5px 11px;border-radius:8px;border:1px solid #ddd;background:none;font-size:12px;cursor:pointer;color:#888;}
@@ -142,7 +144,7 @@ button.sm:hover{background:#f5f5f3;}
         <div class="sec-label">Roommate</div>
         <select id="vac-who" style="width:100%"><option value="0">Sarah</option><option value="1">Jess</option><option value="2">AK</option><option value="3">Valerie</option></select>
       </div>
-      <div class="dates-row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div class="dates-row">
         <div><div class="sec-label">From</div><input type="date" id="vac-from" style="width:100%"/></div>
         <div><div class="sec-label">To</div><input type="date" id="vac-to" style="width:100%"/></div>
       </div>
