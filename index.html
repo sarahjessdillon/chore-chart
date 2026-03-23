@@ -391,20 +391,22 @@ function renderMonthCalendar(){
     // Calculate future away per person
     const futAwayMap={};
     const futPartialMap={};
+    const futAwayDates={};
     ALL.forEach(pi=>{
-      let fullyAway=false,partialAway=false;
+      let fullyAway=false,partialAway=false,awayFrom='',awayTo='';
       for(const r of S.vacRanges){
         if(r.who!==pi)continue;
         const f=new Date(r.from+'T12:00:00').getTime(),t=new Date(r.to+'T12:00:00').getTime();
         if(wkMon<=t&&wkSun>=f){
           const awayDays=Math.round((Math.min(wkSun,t)-Math.max(wkMon,f))/86400000)+1;
           const daysPresent=7-awayDays;
-          if(daysPresent<=1)fullyAway=true;
-          else partialAway=true;
+          if(daysPresent<=1){fullyAway=true;}
+          else{partialAway=true;awayFrom=r.from;awayTo=r.to;}
         }
       }
       futAwayMap[pi]=fullyAway;
       futPartialMap[pi]=partialAway;
+      futAwayDates[pi]={from:awayFrom,to:awayTo};
     });
 
     // House assignments for this week
@@ -429,7 +431,7 @@ function renderMonthCalendar(){
 
     html+=`<tr style="background:${rowBg};">`;
     // Week label
-    const wkLabel=isCurrent?'This week':fmtDate(wkMon);
+    const wkLabel=isCurrent?'This week':`${fmtDate(wkMon)} – ${fmtDate(wkSun)}`;
     html+=`<td style="padding:8px;font-size:10px;color:${isCurrent?'#555':'#aaa'};font-weight:${isCurrent?'500':'400'};border-bottom:${lastRow?'none':'1px solid #e5e5e3'};vertical-align:top;white-space:nowrap;">${wkLabel}</td>`;
 
     ALL.forEach(pi=>{
@@ -492,7 +494,8 @@ function renderMonthCalendar(){
             }
           });
           if(futPartialMap[pi]&&!isCurrent){
-            html+=`<div style="font-size:9px;background:#faeeda;color:#633806;padding:1px 4px;border-radius:4px;display:inline-block;margin-top:3px;">Away ${fmtDateStr(S.vacRanges.find(r=>r.who===pi)?S.vacRanges.find(r=>r.who===pi).from:'')}</div>`;
+            const d=futAwayDates[pi];
+            html+=`<div style="font-size:9px;background:#faeeda;color:#633806;padding:1px 4px;border-radius:4px;display:inline-block;margin-top:3px;">Away ${fmtDateStr(d.from)}–${fmtDateStr(d.to)}</div>`;
           }
         } else {
           html+=`<div style="font-size:10px;color:#ccc;font-style:italic;">bath exempt</div>`;
