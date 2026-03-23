@@ -125,6 +125,7 @@ button.sm:hover{background:#f5f5f3;}
     <div id="waiting-banner" style="display:none"></div>
     <div class="grid" id="weekly-grid"></div>
     <div class="progress-row"><div class="progress-text" id="progress-text"></div></div>
+    <div id="month-calendar"></div>
   </div>
 
   <div id="tab-deepclean" style="display:none">
@@ -276,11 +277,29 @@ function getSession(key){
   return s;
 }
 
-function isAway(pi){
-  const mon=S.baseMonday,sun=mon+6*86400000;
-  for(const r of S.vacRanges){if(r.who!==pi)continue;const f=new Date(r.from+'T12:00:00').getTime(),t=new Date(r.to+'T12:00:00').getTime();if(mon<=t&&sun>=f)return true;}
-  return false;
+function getAwayInfo(pi){
+  // Returns {fullyAway, partialAway, awayFrom, awayTo, daysPresent}
+  const mon=S.baseMonday, sun=mon+6*86400000;
+  for(const r of S.vacRanges){
+    if(r.who!==pi)continue;
+    const f=new Date(r.from+'T12:00:00').getTime(), t=new Date(r.to+'T12:00:00').getTime();
+    if(mon<=t&&sun>=f){
+      // overlap exists — calculate days present in the 7-day window
+      const overlapStart=Math.max(mon,f), overlapEnd=Math.min(sun,t);
+      const awayDays=Math.round((overlapEnd-overlapStart)/86400000)+1;
+      const daysPresent=7-awayDays;
+      return {
+        away:true,
+        fullyAway:daysPresent<=1,
+        partialAway:daysPresent>=2,
+        daysPresent,
+        awayFrom:r.from, awayTo:r.to
+      };
+    }
+  }
+  return {away:false,fullyAway:false,partialAway:false,daysPresent:7};
 }
+function isAway(pi){return getAwayInfo(pi).fullyAway;}
 
 function getHouseAssignments(){
   const rot=S.rotOffset,result={};ALL.forEach(i=>result[i]=[]);
@@ -323,6 +342,180 @@ function countAllChores(){
 function doRotate(){S.baseMonday=getMon(new Date());S.rotOffset+=1;S.bathRotOffset+=1;S.lastRotatedMonday=S.baseMonday;save();}
 function manualAdvance(){doRotate();renderWeekly();}
 
+function claimTask(type,key){
+  // Toggle a voluntary claim on a task
+  const wk=type==='house'?weekKey():bathKey();
+  const store=type==='house'?S.checks:S.bathChecks;
+  if(!store[wk])store[wk]={};
+  // We use a "claimed_" prefix to track voluntary claims separately
+  const claimKey='claimed_'+key;
+  store[wk][claimKey]=!store[wk][claimKey];
+  save();renderWeekly();
+}
+
+function renderMonthCalendar(){
+  const cal=document.getElementById('month-calendar');
+  if(!cal)return;
+  const WEEKS=4;
+  let html=`<div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid #e5e5e3;">`;
+  html+=`<div style="font-size:14px;font-weight:500;margin-bottom:1rem;color:#1a1a1a;">Upcoming rotation</div>`;
+  html+=`<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">`;
+  html+=`<table style="width:100%;border-collapse:collapse;min-width:380px;">`;
+
+  // Header row
+  html+=`<thead><tr>`;
+  html+=`<th style="width:60px;padding:6px 8px;font-size:10px;font-weight:500;color:#aaa;border-bottom:1px solid #e5e5e3;text-align:left;"></th>`;
+  ALL.forEach(pi=>{
+    const rm=RM[pi];
+    html+=`<th style="padding:6px 8px;font-size:11px;font-weight:500;color:#888;border-bottom:1px solid #e5e5e3;text-align:left;">
+      <div style="display:flex;align-items:center;gap:5px;">
+        <div style="width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;flex-shrink:0;" class="${rm.av}">${rm.initials}</div>
+        ${rm.name}
+      </div>
+    </th>`;
+  });
+  html+=`</tr></thead><tbody>`;
+
+  for(let w=0;w<WEEKS;w++){
+    const wkMon=S.baseMonday+w*7*86400000;
+    const wkSun=wkMon+6*86400000;
+    const rot=S.rotOffset+w;
+    const bathRot=S.bathRotOffset+w;
+    const isCurrent=w===0;
+    const wkKey='w'+rot;
+    const bwkKey='b'+bathRot;
+    const futSwaps=S.weekSwaps[wkKey]||{};
+    const rowBg=isCurrent?'#fff':'#f9f9f7';
+    const lastRow=w===WEEKS-1;
+
+    // Calculate future away per person
+    const futAwayMap={};
+    const futPartialMap={};
+    ALL.forEach(pi=>{
+      let fullyAway=false,partialAway=false;
+      for(const r of S.vacRanges){
+        if(r.who!==pi)continue;
+        const f=new Date(r.from+'T12:00:00').getTime(),t=new Date(r.to+'T12:00:00').getTime();
+        if(wkMon<=t&&wkSun>=f){
+          const awayDays=Math.round((Math.min(wkSun,t)-Math.max(wkMon,f))/86400000)+1;
+          const daysPresent=7-awayDays;
+          if(daysPresent<=1)fullyAway=true;
+          else partialAway=true;
+        }
+      }
+      futAwayMap[pi]=fullyAway;
+      futPartialMap[pi]=partialAway;
+    });
+
+    // House assignments for this week
+    const hAssign={};ALL.forEach(i=>hAssign[i]=[]);
+    S.sections.forEach((sec,si)=>{
+      const swapKey='h_'+si;
+      let idx=(rot+si)%4,covering=false,tries=0;
+      while(futAwayMap[idx]&&tries<4){idx=(idx+1)%4;covering=true;tries++;}
+      if(futSwaps[swapKey]!==undefined){idx=futSwaps[swapKey];covering=false;}
+      hAssign[idx].push({sec,si});
+    });
+
+    // Bath assignments for this week
+    const bAssign={1:[],2:[],3:[]};
+    S.bathSections.forEach((sec,si)=>{
+      const swapKey='b_'+si;
+      let pidx=(bathRot+si)%BATH.length,pi=BATH[pidx],tries=0;
+      while(futAwayMap[pi]&&tries<BATH.length){pidx=(pidx+1)%BATH.length;pi=BATH[pidx];tries++;}
+      if(futSwaps[swapKey]!==undefined){pi=futSwaps[swapKey];}
+      bAssign[pi].push({sec,si});
+    });
+
+    html+=`<tr style="background:${rowBg};">`;
+    // Week label
+    const wkLabel=isCurrent?'This week':fmtDate(wkMon);
+    html+=`<td style="padding:8px;font-size:10px;color:${isCurrent?'#555':'#aaa'};font-weight:${isCurrent?'500':'400'};border-bottom:${lastRow?'none':'1px solid #e5e5e3'};vertical-align:top;white-space:nowrap;">${wkLabel}</td>`;
+
+    ALL.forEach(pi=>{
+      const rm=RM[pi];
+      html+=`<td style="padding:6px 8px;border-bottom:${lastRow?'none':'1px solid #e5e5e3'};border-left:1px solid #f0f0ee;vertical-align:top;min-width:80px;">`;
+
+      if(futAwayMap[pi]){
+        html+=`<div style="font-size:10px;color:#aaa;font-style:italic;padding:2px 0;">Away</div>`;
+      } else {
+        // House section(s)
+        const myHouse=hAssign[pi]||[];
+        if(myHouse.length){
+          myHouse.forEach(({sec,si})=>{
+            if(!isCurrent){
+              // swap picker for future weeks
+              const swapKey='h_'+si;
+              const isSwapped=futSwaps[swapKey]!==undefined;
+              html+=`<div style="margin-bottom:2px;">`;
+              html+=`<div style="font-size:11px;font-weight:500;color:${isSwapped?'#534ab7':'#1a1a1a'};line-height:1.3;">${sec.name}${isSwapped?` <span style="font-size:9px;background:#eeedfe;color:#534ab7;padding:1px 4px;border-radius:4px;">swapped</span>`:''}</div>`;
+              html+=`<div style="display:flex;gap:3px;margin-top:2px;">`;
+              if(isSwapped){
+                html+=`<button onclick="clearFutureSwap('${wkKey}','h',${si})" style="font-size:9px;padding:1px 5px;border-radius:5px;border:0.5px solid #ddd;background:none;cursor:pointer;color:#aaa;">undo</button>`;
+              } else {
+                const opts=ALL.filter(p=>p!==pi&&!futAwayMap[p]).map(p=>`<option value="${p}">${RM[p].name}</option>`).join('');
+                html+=`<select onchange="if(this.value!='')setFutureSwap('${wkKey}','h',${si},this.value);this.value='';" style="font-size:9px;padding:1px 4px;border:0.5px solid #ddd;border-radius:5px;background:#fff;color:#888;max-width:80px;">
+                  <option value="">swap…</option>${opts}
+                </select>`;
+              }
+              html+=`</div></div>`;
+            } else {
+              html+=`<div style="font-size:11px;font-weight:500;color:#1a1a1a;line-height:1.3;">${sec.name}</div>`;
+            }
+          });
+        }
+
+        // Divider between house and bath
+        html+=`<div style="border-top:0.5px solid #e5e5e3;margin:4px 0;"></div>`;
+
+        // Bath section
+        if(BATH.includes(pi)){
+          const myBath=bAssign[pi]||[];
+          myBath.forEach(({sec,si})=>{
+            if(!isCurrent){
+              const swapKey='b_'+si;
+              const isSwapped=futSwaps[swapKey]!==undefined;
+              html+=`<div style="margin-bottom:2px;">`;
+              html+=`<div style="font-size:10px;color:${isSwapped?'#534ab7':'#666'};line-height:1.3;">${sec.name}${isSwapped?` <span style="font-size:9px;background:#eeedfe;color:#534ab7;padding:1px 4px;border-radius:4px;">swapped</span>`:''}</div>`;
+              html+=`<div style="display:flex;gap:3px;margin-top:2px;">`;
+              if(isSwapped){
+                html+=`<button onclick="clearFutureSwap('${wkKey}','b',${si})" style="font-size:9px;padding:1px 5px;border-radius:5px;border:0.5px solid #ddd;background:none;cursor:pointer;color:#aaa;">undo</button>`;
+              } else {
+                const opts=BATH.filter(p=>p!==pi&&!futAwayMap[p]).map(p=>`<option value="${p}">${RM[p].name}</option>`).join('');
+                html+=`<select onchange="if(this.value!='')setFutureSwap('${wkKey}','b',${si},this.value);this.value='';" style="font-size:9px;padding:1px 4px;border:0.5px solid #ddd;border-radius:5px;background:#fff;color:#888;max-width:80px;">
+                  <option value="">swap…</option>${opts}
+                </select>`;
+              }
+              html+=`</div></div>`;
+            } else {
+              html+=`<div style="font-size:10px;color:#666;line-height:1.3;">${sec.name}</div>`;
+            }
+          });
+          if(futPartialMap[pi]&&!isCurrent){
+            html+=`<div style="font-size:9px;background:#faeeda;color:#633806;padding:1px 4px;border-radius:4px;display:inline-block;margin-top:3px;">Away ${fmtDateStr(S.vacRanges.find(r=>r.who===pi)?S.vacRanges.find(r=>r.who===pi).from:'')}</div>`;
+          }
+        } else {
+          html+=`<div style="font-size:10px;color:#ccc;font-style:italic;">bath exempt</div>`;
+        }
+      }
+      html+=`</td>`;
+    });
+    html+=`</tr>`;
+  }
+  html+=`</tbody></table></div></div>`;
+  cal.innerHTML=html;
+}
+
+function setFutureSwap(wkKey,type,si,newPi){
+  if(!S.weekSwaps[wkKey])S.weekSwaps[wkKey]={};
+  S.weekSwaps[wkKey][type+'_'+si]=parseInt(newPi);
+  save();renderMonthCalendar();
+}
+function clearFutureSwap(wkKey,type,si){
+  if(S.weekSwaps[wkKey])delete S.weekSwaps[wkKey][type+'_'+si];
+  save();renderMonthCalendar();
+}
+
 function toggleCheck(type,key){
   if(type==='house'){const wk=weekKey();if(!S.checks[wk])S.checks[wk]={};S.checks[wk][key]=!S.checks[wk][key];}
   else{const bk=bathKey();if(!S.bathChecks[bk])S.bathChecks[bk]={};S.bathChecks[bk][key]=!S.bathChecks[bk][key];}
@@ -353,9 +546,13 @@ function renderWeekly(){
   const mon=S.baseMonday,sun=mon+6*86400000;
   document.getElementById('wk-title').textContent='Week of '+fmtDate(mon)+' – '+fmtDate(sun);
   document.getElementById('wk-sub').textContent='Rotation '+(S.rotOffset%4+1)+' of 4  ·  auto-rotates Monday 9pm EST when all done';
-  const awayPeople=ALL.filter(i=>isAway(i));
+  const awayPeople=ALL.filter(i=>getAwayInfo(i).fullyAway);
+  const partialPeople=ALL.filter(i=>getAwayInfo(i).partialAway);
   const vacBanner=document.getElementById('vac-banner');
-  if(awayPeople.length){vacBanner.className='banner banner-vac';vacBanner.style.display='';vacBanner.textContent=awayPeople.map(i=>RM[i].name).join(' & ')+(awayPeople.length>1?' are':' is')+' away — chores redistributed.';}
+  const msgs=[];
+  if(awayPeople.length) msgs.push(awayPeople.map(i=>RM[i].name).join(' & ')+(awayPeople.length>1?' are':' is')+' away — chores redistributed.');
+  if(partialPeople.length) msgs.push(partialPeople.map(i=>RM[i].name).join(' & ')+(partialPeople.length>1?' are':' is')+' away part of this week — chores stay assigned, see their card.');
+  if(msgs.length){vacBanner.className='banner banner-vac';vacBanner.style.display='';vacBanner.textContent=msgs.join(' ');}
   else vacBanner.style.display='none';
   const{total,done}=countAllChores();
   const est=getESTNow();
@@ -369,11 +566,22 @@ function renderWeekly(){
   const grid=document.getElementById('weekly-grid');grid.innerHTML='';
   let totalC=0,doneC=0;
   ALL.forEach(pi=>{
-    const rm=RM[pi],away=isAway(pi);
+    const rm=RM[pi],awayInfo=getAwayInfo(pi);
+    const away=awayInfo.fullyAway, partial=awayInfo.partialAway;
     const col=document.createElement('div');col.className='person-col';
-    let html=`<div class="person-card"><div class="person-header"><div class="avatar ${rm.av}">${rm.initials}</div><span class="person-name">${rm.name}</span>${away?`<span class="away-badge">Away</span>`:''}</div>`;
-    if(away){html+=`<div class="away-block"><span class="away-label">Away this week</span></div>`;}
-    else{
+    let html=`<div class="person-card"><div class="person-header"><div class="avatar ${rm.av}">${rm.initials}</div><span class="person-name">${rm.name}</span>${away?`<span class="away-badge">Away</span>`:(partial?`<span class="away-badge" style="background:#e1f5ee;color:#085041;">Partial</span>`:'')}
+    </div>`;
+    if(away){
+      html+=`<div class="away-block"><span class="away-label">Away this week</span></div>`;
+    } else {
+      // Partial away notice
+      if(partial){
+        const leavingMid=new Date(awayInfo.awayFrom+'T12:00:00').getTime()>S.baseMonday;
+        const msg=leavingMid
+          ? `Away ${fmtDateStr(awayInfo.awayFrom)}–${fmtDateStr(awayInfo.awayTo)} — try to get chores done before leaving`
+          : `Back ${fmtDateStr(awayInfo.awayTo)} — time to catch up on chores`;
+        html+=`<div style="padding:6px 12px;font-size:11px;color:#085041;background:#e1f5ee;border-bottom:1px solid #9fe1cb;">${msg}</div>`;
+      }
       (hA[pi]||[]).forEach(({sec,si,covering,swapped})=>{
         const pickerId='h_'+si;
         const isOpen=swapPickerOpen===pickerId;
@@ -383,7 +591,13 @@ function renderWeekly(){
         else if(isOpen) titleRight=`<span class="swap-picker"><select id="sp-h-${si}">${otherOptions}</select><button onclick="swapSection('h',${si},document.getElementById('sp-h-${si}').value)">Assign</button><button onclick="swapPickerOpen=null;renderWeekly()">✕</button></span>`;
         else titleRight=`<button class="swap-btn" onclick="toggleSwapPicker('${pickerId}')">swap ⇄</button>`;
         html+=`<div class="section-block"><div class="section-title">${sec.name}${covering?`<span class="covering-badge">covering</span>`:''}${titleRight}</div>`;
-        sec.chores.forEach((chore,ci)=>{const key=`${pi}_${si}_${ci}`,isDone=!!checks[key];totalC++;if(isDone)doneC++;html+=`<div class="chore-row"><label class="${isDone?'done':''}"><input type="checkbox" ${isDone?'checked':''} onchange="toggleCheck('house','${key}')" />${chore}</label></div>`;});
+        sec.chores.forEach((chore,ci)=>{
+          const key=`${pi}_${si}_${ci}`,isDone=!!checks[key];
+          totalC++;if(isDone)doneC++;
+          html+=`<div class="chore-row"><label class="${isDone?'done':''}"><input type="checkbox" ${isDone?'checked':''} onchange="toggleCheck('house','${key}')" />${chore}</label>`;
+          if(partial&&!isDone) html+=`<button class="swap-btn" style="font-size:9px;padding:1px 5px;" onclick="toggleCheck('house','${key}')">cover</button>`;
+          html+=`</div>`;
+        });
         html+=`</div>`;
       });
       if(BATH.includes(pi)){
@@ -396,7 +610,13 @@ function renderWeekly(){
           else if(isOpen) titleRight=`<span class="swap-picker"><select id="sp-b-${si}">${otherOptions}</select><button onclick="swapSection('b',${si},document.getElementById('sp-b-${si}').value)">Assign</button><button onclick="swapPickerOpen=null;renderWeekly()">✕</button></span>`;
           else titleRight=`<button class="swap-btn" onclick="toggleSwapPicker('${pickerId}')">swap ⇄</button>`;
           html+=`<div class="section-block"><div class="section-title">${sec.name}${covering?`<span class="covering-badge">covering</span>`:''}${titleRight}</div>`;
-          sec.chores.forEach((chore,ci)=>{const key=`${pi}_${si}_${ci}`,isDone=!!bathChecks[key];totalC++;if(isDone)doneC++;html+=`<div class="chore-row"><label class="${isDone?'done':''}"><input type="checkbox" ${isDone?'checked':''} onchange="toggleCheck('bath','${key}')" />${chore}</label></div>`;});
+          sec.chores.forEach((chore,ci)=>{
+            const key=`${pi}_${si}_${ci}`,isDone=!!bathChecks[key];
+            totalC++;if(isDone)doneC++;
+            html+=`<div class="chore-row"><label class="${isDone?'done':''}"><input type="checkbox" ${isDone?'checked':''} onchange="toggleCheck('bath','${key}')" />${chore}</label>`;
+            if(partial&&!isDone) html+=`<button class="swap-btn" style="font-size:9px;padding:1px 5px;" onclick="toggleCheck('bath','${key}')">cover</button>`;
+            html+=`</div>`;
+          });
           html+=`</div>`;
         });
       }
@@ -404,6 +624,7 @@ function renderWeekly(){
     html+=`</div>`;col.innerHTML=html;grid.appendChild(col);
   });
   document.getElementById('progress-text').textContent=`${doneC} of ${totalC} chores done this week`;
+  renderMonthCalendar();
 }
 
 function futureSessionKey(monthsAhead){
